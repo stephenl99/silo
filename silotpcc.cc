@@ -89,17 +89,22 @@ bool worker_exec_one(void *w, uint64_t *widx)
 {
 	my_bench_worker *worker = (my_bench_worker *)w;
 	auto workload = worker->get_workload();
-	if (workload.empty())
-		return false;
 	double d = worker->get_r()->next_uniform();
-	size_t i = 0;
+	size_t i, last = -1;
 
-	// workload is compacted to non-zero txn types in tpcc.cc; use frequencies aligned
-	// with workload order (not override_txn_mix's fixed 5-slot order).
 	for (i = 0; i < workload.size(); i++) {
-		if (i + 1 == workload.size() || d < workload[i].frequency)
+		if (d < override_txn_mix[i])
 			break;
-		d -= workload[i].frequency;
+
+		if (override_txn_mix[i] > 0.0)
+			last = i;
+
+		if (i + 1 == workload.size()) {
+			i = last;
+			break;
+		}
+
+		d -= override_txn_mix[i];
 	}
 
 	*widx = i;
